@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * 
+ * eWay payment gate way API wrapper
+ * 
+ * A rewrite of the PHP sample code provided by eWay
+ * 
+ * https://github.com/Sharnw/php-eway-api-wrapper
+ * 
+ */
 class Eway {
 	
 	private $customerId, $gatewayURL, $antiFraud = false, $failedAttemptLimit = 0, $failedAttemptLifetime = 300, $transactionData = array(), $curlOptions, $xmlRequest, $xmlResponse;
@@ -58,6 +67,11 @@ class Eway {
 		$this->curlOptions[$key] = $value;
 	}
 	
+	/**
+	 * Attempts to process a transaction.
+	 * 
+	 * @return array('success', 'responseCode', 'responseMessage') Transaction result values.
+	 */
 	public function processTransaction() {
 		// if failed attempts limit set check if too many failed attempts
 		if ($this->failedAttemptLimit > 0) {
@@ -85,7 +99,7 @@ class Eway {
 		$validationResult = $this->validateTransactionData();
 		if ($validationResult['success']) {
 			// prepare xml request
-	        $this->xmlRequest = $this->prepareXmlRequest();
+			$this->xmlRequest = $this->prepareXmlRequest();
 
 			// send xml request
 			$this->xmlResponse = $this->sendXmlRequest();
@@ -117,6 +131,7 @@ class Eway {
 					$returnValues['transactionNumber'] = $requestResults['EWAYTRXNNUMBER'];
 				}
 				
+				// retrieve response code and message from EWAYTRXNERROR
 				if (isset($requestResults['EWAYTRXNERROR'])) {
 					$errorParts = explode(',', $requestResults['EWAYTRXNERROR']);
 					if (isset($errorParts[0])) {
@@ -138,6 +153,11 @@ class Eway {
 		}
 	}
 	
+	/**
+	 * Validates $this->transactionData.
+	 * 
+	 * @return array('success', 'messages')
+	 */
 	private function validateTransactionData() {
 		// compare transaction data keys to mandatory fields list
 		$transactionKeys = array_keys($this->transactionData);
@@ -147,13 +167,18 @@ class Eway {
 			if (!in_array($field, $transactionKeys)) {
 				// if mandatory field not in transaction data return an error
 				$valid = false;
-				$messages[] = 'Missing field ' . $field;
+				$messages[] = 'Missing mandatory field ' . $field;
 			}
 		}
 
 		return array('success' => $valid, 'messages' => $messages);
 	}
 	
+	/**
+	 * Prepares an xml request using $this->customerId and $this->transactionData.
+	 * 
+	 * @return string Xml request string
+	 */
 	private function prepareXmlRequest() {
 		$xmlRequest = "<ewaygateway><ewayCustomerID>" . $this->customerId . "</ewayCustomerID>";
 		foreach($this->transactionData as $key=>$value) {
@@ -167,29 +192,39 @@ class Eway {
 			}
 		}
 
-        $xmlRequest .= "</ewaygateway>";
+		$xmlRequest .= "</ewaygateway>";
 		return $xmlRequest;
 	}
 	
+	/**
+	 * Sends xml request to eway using curl.
+	 * 
+	 * @return string|false Xml response string
+	 */
 	private function sendXmlRequest() {
 		$ch = curl_init($this->gatewayURL);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $this->xmlRequest);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_POST, 1);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $this->xmlRequest);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		if (!empty($this->curlOptions)) {
 			foreach ($this->curlOptions as $key => $value) {
 				curl_setopt($ch, $key, $value);
 			}
 		}
 
-        $xmlResponse = curl_exec($ch);
+		$xmlResponse = curl_exec($ch);
 		if(curl_errno( $ch ) == CURLE_OK) {
 			return $xmlResponse;
-	    }
+		}
 		
 		return false;
 	}
 	
+	/**
+	 * Parses xml response string from eWay.
+	 * 
+	 * @return array $responseFields Response values.
+	 */
 	private function parseXmlResponse() {
 		$xml_parser = xml_parser_create();
 		xml_parse_into_struct($xml_parser,  $this->xmlResponse, $xmlData, $index);
@@ -203,11 +238,15 @@ class Eway {
 		return $responseFields;
 	}
 	
+	/**
+	 * Returns the clients IP address.
+	 * 
+	 * @return string $ip Client IP address
+	 */
 	public function getVisitorIP(){
 		$ip = $_SERVER["REMOTE_ADDR"];
 		if (isset($_SERVER["HTTP_X_FORWARDED_FOR"])) {
-			$proxy = $_SERVER["HTTP_X_FORWARDED_FOR"];
-			if(ereg("^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$",$proxy)) {
+			if(ereg("^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$",$_SERVER["HTTP_X_FORWARDED_FOR"])) {
 				$ip = $_SERVER["HTTP_X_FORWARDED_FOR"];
 			}
 		}
