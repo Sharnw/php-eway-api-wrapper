@@ -109,8 +109,7 @@ class Eway {
 
 			$returnValues = array();
 			if (isset($requestResults['EWAYTRXNSTATUS'])) {
-				
-				if ($requestResults['EWAYTRXNSTATUS'] == 'TRUE') {
+				if ($requestResults['EWAYTRXNSTATUS'] == 'True') {
 					$returnValues['success'] = true;
 				}
 				else {
@@ -228,11 +227,11 @@ class Eway {
 	private function parseXmlResponse() {
 		$xml_parser = xml_parser_create();
 		xml_parse_into_struct($xml_parser,  $this->xmlResponse, $xmlData, $index);
-   	 	$responseFields = array();
-    	foreach($xmlData as $data) {
-    		if(isset($data['value']) and $data['level'] == 2) {
-    			$responseFields[$data['tag']] = $data['value'];
-    		}
+		$responseFields = array();
+		foreach($xmlData as $data) {
+			if(isset($data['value']) and $data['level'] == 2) {
+				$responseFields[$data['tag']] = $data['value'];
+			}
 		}
 		
 		return $responseFields;
